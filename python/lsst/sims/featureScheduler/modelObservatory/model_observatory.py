@@ -1,3 +1,4 @@
+import logging
 import numpy as np
 from lsst.sims.utils import (_hpid2RaDec, _raDec2Hpid, Site, calcLmstLast,
                              m5_flat_sed, _approx_RaDec2AltAz, _angularSeparation)
@@ -21,6 +22,7 @@ from importlib import import_module
 
 __all__ = ['Model_observatory']
 
+sched_logger = logging.getLogger("Core_scheduler")
 
 class ExtendedObservatoryModel(ObservatoryModel):
     """Add some functionality to ObservatoryModel
@@ -274,7 +276,7 @@ class Model_observatory(object):
 
     def __init__(self, nside=None, mjd_start=59853.5, seed=42, quickTest=True,
                  alt_min=5., lax_dome=True, cloud_limit=0.3, sim_ToO=None,
-                 seeing_db=None):
+                 seeing_db=None, cloud_db=None, cloud_offset_year=0):
         """
         Parameters
         ----------
@@ -291,6 +293,10 @@ class Model_observatory(object):
         sim_ToO : sim_targetoO object (None)
             If one would like to inject simulated ToOs into the telemetry stream.
         seeing_db : filename of the seeing data database (None)
+            If one would like to use an alternate seeing database
+        cloud_offset_year : float, opt
+            Offset into the cloud database by 'offset_year' years. Default 0.
+        cloud_db : filename of the cloud data database (None)
             If one would like to use an alternate seeing database
         """
 
@@ -358,8 +364,9 @@ class Model_observatory(object):
         for i, filtername in enumerate(self.seeing_model.filter_list):
             self.seeing_indx_dict[filtername] = i
 
-        self.cloud_data = CloudData(mjd_start_time, offset_year=0)
-
+        self.cloud_data = CloudData(mjd_start_time, cloud_db=cloud_db, offset_year=cloud_offset_year)
+        sched_logger.info(f"Using {self.cloud_data.cloud_db} as cloud database with start year {self.cloud_data.start_time.iso}")
+        
         self.sky_model = sb.SkyModelPre(speedLoad=quickTest)
 
         self.observatory = ExtendedObservatoryModel()
